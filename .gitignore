@@ -1,2 +1,4 @@
 *.pyc
 .idea/
+.noseids
+dump.rdb
