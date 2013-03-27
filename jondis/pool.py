@@ -13,7 +13,10 @@ class Pool(object):
         self.connection_kwargs = connection_kwargs
         self.max_connections = max_connections or 2 ** 31
         self._created_connections = 0
-        self._available_connections = []
+        self._available_connections = [] # is the current master
+
+        self._slaves = [] # list of slave servers
+
         self._in_use_connections = set()
 
     def _checkpid(self):
