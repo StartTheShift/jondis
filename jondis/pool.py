@@ -1,3 +1,4 @@
+from Queue import Queue
 import os
 from redis import ConnectionError
 from redis.connection import Connection
@@ -41,7 +42,13 @@ class Pool(object):
         given the servers we know about, find the current master
         once we have the master, find all the slaves
         """
+        to_check = Queue()
         for x in self._hosts:
+            to_check.put(x)
+
+        while not to_check.empty():
+            x = to_check.get()
+
             try:
                 conn = self.connection_class(host=x.host, port=x.port, **self.connection_kwargs)
                 conn.send_command("INFO")
@@ -50,12 +57,24 @@ class Pool(object):
                 if info['role'] == 'slave':
                     self._slave_pool.add(conn)
                 elif info['role'] == 'master':
-                    slaves = filter(lambda x: x[0:5] == 'slave', info.keys())
                     self._master_pool.add(conn)
+                    slaves = filter(lambda x: x[0:5] == 'slave', info.keys())
+                    slaves = [info[y] for y in slaves]
+                    slaves = [y.split(',') for y in slaves]
+                    slaves = filter(lambda x: x[2] == 'online', slaves)
+                    slaves = [Server(x[0], int(x[1])) for x in slaves]
+
+                    for y in slaves:
+                        if y not in self._hosts:
+                            self._hosts.add(y)
+                            to_check.put(y)
+
+                    # add the slaves
 
             except:
                 # remove from list
-                pass
+                to_remove = []
+
 
     def _checkpid(self):
         if self.pid != os.getpid():
