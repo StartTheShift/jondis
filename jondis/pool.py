@@ -1,4 +1,5 @@
 from Queue import Queue
+from itertools import chain
 import os
 from redis import ConnectionError
 from redis.connection import Connection
@@ -18,6 +19,7 @@ class Pool(object):
         self.connection_class = connection_class
         self.connection_kwargs = connection_kwargs
         self.max_connections = max_connections or 2 ** 31
+        self._in_use_connections = set()
 
         self._hosts = set() # current active known hosts
         self._current_master = None # (host,port)
@@ -86,9 +88,10 @@ class Pool(object):
         "Get a connection from the pool"
         self._checkpid()
         try:
-            connection = self._available_connections.pop()
+            connection = self._master_pool.pop()
         except IndexError:
             connection = self.make_connection()
+
         self._in_use_connections.add(connection)
         return connection
 
@@ -104,11 +107,11 @@ class Pool(object):
         self._checkpid()
         if connection.pid == self.pid:
             self._in_use_connections.remove(connection)
-            self._available_connections.append(connection)
+            self._master_pool.add(connection)
 
     def disconnect(self):
         "Disconnects all connections in the pool"
-        all_conns = chain(self._available_connections,
+        all_conns = chain(self._master_pool,
                           self._in_use_connections)
         for connection in all_conns:
             connection.disconnect()
