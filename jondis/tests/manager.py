@@ -36,5 +36,8 @@ class Manager(object):
         for (proc,port) in self.procs.itervalues():
             proc.terminate()
 
+    def __getitem__(self, item):
+        return self.procs[item]
+
 
 
