@@ -4,6 +4,7 @@ import os
 
 # im picking an arbitarily high port
 # starting point, going up from here
+from time import sleep
 
 port = 25530
 DEVNULL=open(os.devnull, 'wb')
@@ -26,6 +27,8 @@ class Manager(object):
 
         self.procs[name] = (proc, port)
         port += 1
+        # ghetto hack but necessary to find the right slaves
+        sleep(.1)
         return self.procs[name][1]
 
     def stop(self, name):

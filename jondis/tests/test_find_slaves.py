@@ -28,12 +28,13 @@ class DiscoverSlavesTest(BaseJondisTest):
         self.slave2 = self.manager.start('slave2', self.master)
 
     def test_find_slave(self):
+        # tests that we auto discover the 2nd slave
         hosts = ['127.0.0.1:{}'.format(self.master),
                  '127.0.0.1:{}'.format(self.slave)]
 
         pool = Pool(hosts=hosts)
 
-        assert len(pool._hosts) == 3
+        assert len(pool._hosts) == 3, pool._hosts
         assert len(pool._slave_pool) == 2
         assert len(pool._master_pool) == 1
 
