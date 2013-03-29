@@ -5,6 +5,9 @@ from redis import ConnectionError
 from redis.connection import Connection
 from redis.client import parse_info
 from collections import namedtuple
+import logging
+
+logger = logging.getLogger(__name__)
 
 Server = namedtuple('Server', ['host', 'port'])
 
@@ -26,6 +29,7 @@ class Pool(object):
 
         self._master_pool = set()
         self._slave_pool = set()
+        self._created_connections = 0
 
         for x in hosts:
             if ":" in x:
@@ -44,6 +48,7 @@ class Pool(object):
         given the servers we know about, find the current master
         once we have the master, find all the slaves
         """
+        logger.debug("Running configure")
         to_check = Queue()
         for x in self._hosts:
             to_check.put(x)
@@ -59,6 +64,8 @@ class Pool(object):
                 if info['role'] == 'slave':
                     self._slave_pool.add(conn)
                 elif info['role'] == 'master':
+                    self._current_master = x
+                    logger.debug("Current master {}:{}".format(x.host, x.port))
                     self._master_pool.add(conn)
                     slaves = filter(lambda x: x[0:5] == 'slave', info.keys())
                     slaves = [info[y] for y in slaves]
@@ -76,6 +83,7 @@ class Pool(object):
             except:
                 # remove from list
                 to_remove = []
+        logger.debug("Configure complete, host list: {}".format(self._hosts))
 
 
     def _checkpid(self):
@@ -89,7 +97,7 @@ class Pool(object):
         self._checkpid()
         try:
             connection = self._master_pool.pop()
-        except IndexError:
+        except KeyError:
             connection = self.make_connection()
 
         self._in_use_connections.add(connection)
@@ -102,9 +110,11 @@ class Pool(object):
 
         self._created_connections += 1
 
+
         host = self._current_master[0]
         port = self._current_master[1]
 
+        logger.debug("Creating new connection to {}:{}".format(host, port))
         return self.connection_class(host=host, port=port, **self.connection_kwargs)
 
     def release(self, connection):
@@ -128,6 +138,8 @@ class Pool(object):
         "Disconnects all connections in the pool"
         self._master_pool = set()
         self._slave_pool = set()
+
+        self._in_use_connections = set()
 
         all_conns = chain(self._master_pool,
                           self._in_use_connections)

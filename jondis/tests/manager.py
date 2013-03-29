@@ -6,6 +6,9 @@ import os
 # starting point, going up from here
 from time import sleep
 import redis
+import logging
+
+logger = logging.getLogger(__name__)
 
 port = 25530
 DEVNULL=open(os.devnull, 'wb')
@@ -40,6 +43,7 @@ class Manager(object):
 
     def promote(self, port):
         admin_conn = redis.StrictRedis('localhost', port)
+        logger.debug("Promoting {}".format(port))
         admin_conn.slaveof() # makes it the master
         sleep(.1)
 
