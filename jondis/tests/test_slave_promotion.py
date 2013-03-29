@@ -1,3 +1,4 @@
+import unittest
 from jondis.pool import Pool
 from jondis.tests.base import BaseJondisTest
 import redis
@@ -11,7 +12,7 @@ class SlavePromotionTest(BaseJondisTest):
         assert self.slave > 0
 
 
-    def test_promotion_multiple_failures(self):
+    def test_promotion_on_failure(self):
         pool = Pool(hosts=['127.0.0.1:{}'.format(self.master)])
         r = redis.StrictRedis(connection_pool=pool)
 
@@ -31,7 +32,12 @@ class SlavePromotionTest(BaseJondisTest):
 
         tmp2 = r.get('test2')
 
+    @unittest.skip
+    def test_multiple_cascading_failures(self):
+        self.test_promotion_on_failure()
+
         self.slave = self.manager.start('slave2', self.master)
+
         self.manager.stop('slave')
         self.manager.promote(self.slave)
 

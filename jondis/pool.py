@@ -125,8 +125,14 @@ class Pool(object):
         """
 
         if connection._sock is None:
+            logger.debug("Dead socket, reconfigure")
             self.disconnect()
             self._configure()
+            self._current_master = None
+            server = Server(connection.host, int(connection.port))
+            self._hosts.remove(server)
+            logger.debug("New configuration: {}".format(self._hosts))
+
             return
 
         self._checkpid()
@@ -138,11 +144,6 @@ class Pool(object):
         "Disconnects all connections in the pool"
         self._master_pool = set()
         self._slave_pool = set()
-
         self._in_use_connections = set()
 
-        all_conns = chain(self._master_pool,
-                          self._in_use_connections)
-        for connection in all_conns:
-            connection.disconnect()
 
