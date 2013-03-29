@@ -99,11 +99,26 @@ class Pool(object):
         "Create a new connection"
         if self._created_connections >= self.max_connections:
             raise ConnectionError("Too many connections")
+
         self._created_connections += 1
-        return self.connection_class(**self.connection_kwargs)
+
+        host = self._current_master[0]
+        port = self._current_master[1]
+
+        return self.connection_class(host=host, port=port, **self.connection_kwargs)
 
     def release(self, connection):
-        "Releases the connection back to the pool"
+
+        """
+        Releases the connection back to the pool
+        if the connection is dead, we disconnect all
+        """
+
+        if connection._sock is None:
+            self.disconnect()
+            self._configure()
+            return
+
         self._checkpid()
         if connection.pid == self.pid:
             self._in_use_connections.remove(connection)
@@ -111,6 +126,9 @@ class Pool(object):
 
     def disconnect(self):
         "Disconnects all connections in the pool"
+        self._master_pool = set()
+        self._slave_pool = set()
+
         all_conns = chain(self._master_pool,
                           self._in_use_connections)
         for connection in all_conns:

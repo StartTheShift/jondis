@@ -18,5 +18,16 @@ class SlavePromotionTest(BaseJondisTest):
         tmp = r.set('test', 1)
         tmp2 = r.get('test2')
 
+        self.manager.stop('master')
+
+        admin_conn = redis.StrictRedis('localhost', self.slave)
+
+        # promote slave to master
+        self.manager.promote(self.slave)
+
+        with self.assertRaises(redis.ConnectionError):
+            r.get('test2')
+
+        tmp2 = r.get('test2')
 
 

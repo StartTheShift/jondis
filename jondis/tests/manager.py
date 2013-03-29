@@ -5,6 +5,7 @@ import os
 # im picking an arbitarily high port
 # starting point, going up from here
 from time import sleep
+import redis
 
 port = 25530
 DEVNULL=open(os.devnull, 'wb')
@@ -34,6 +35,13 @@ class Manager(object):
     def stop(self, name):
         (proc, port) = self.procs[name]
         proc.terminate()
+        # same hack as above to make sure failure actually happens
+        sleep(.1)
+
+    def promote(self, port):
+        admin_conn = redis.StrictRedis('localhost', port)
+        admin_conn.slaveof() # makes it the master
+        sleep(.1)
 
     def shutdown(self):
         for (proc,port) in self.procs.itervalues():
