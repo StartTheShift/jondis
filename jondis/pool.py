@@ -6,6 +6,7 @@ from redis.connection import Connection
 from redis.client import parse_info
 from collections import namedtuple
 import logging
+import socket
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ class Pool(object):
             else:
                 host = x
                 port = 6379
-
+            host = socket.gethostbyname(host)
             self._hosts.add(Server(host, int(port)))
 
         self._configure()
@@ -79,7 +80,6 @@ class Pool(object):
                             to_check.put(y)
 
                     # add the slaves
-
             except:
                 # remove from list
                 to_remove = []
@@ -97,7 +97,9 @@ class Pool(object):
         self._checkpid()
         try:
             connection = self._master_pool.pop()
+            logger.debug("Using connection from pool")
         except KeyError:
+            logger.debug("Creating new connection")
             connection = self.make_connection()
 
         self._in_use_connections.add(connection)
@@ -110,6 +112,9 @@ class Pool(object):
 
         self._created_connections += 1
 
+        if self._current_master == None:
+            logger.debug("No master set - reconfiguratin")
+            self._configure()
 
         host = self._current_master[0]
         port = self._current_master[1]
